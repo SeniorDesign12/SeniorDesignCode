@@ -1,16 +1,21 @@
 function PolypFrontEnd()
 
+global videoSrc;
+global frame;
+
 %% 
 % Create a figure window and two axes to display the input video and the
 % processed video.
 [backPanel, vAxis] = createFigureAndAxes();
 handles= create_buttons(backPanel);
 
+
 javaGuiComponents(backPanel);
 
 %load button images
 play_image = imread('play_button.jpg');
 f.forward= imread('fastfoward_image.jpg');
+
 
 %% Create Figure, Axes, Titles
 % Create a figure window and two axes with titles to display two videos.
@@ -113,7 +118,8 @@ f.forward= imread('fastfoward_image.jpg');
         handles.play = uicontrol('Parent', backPanel,...
             'unit', 'normalized',...
             'style','pushbutton',...
-            'position',[.16 .35 .06 .06]);
+            'position',[.16 .35 .06 .06],...
+            'callback', {@playCallback,vAxis, handles});
         
         
         %Fastforward Button
@@ -171,23 +177,30 @@ for i=1:length(images)
       %get the button new button sizes and resize images accordingly
       handles.(buttons{i}).Units='pixels';
       images{i}=imresize(images{i},fliplr(handles.(buttons{i}).Position(1,3:4)));
-      disp(size(images{i}));
-      handles.(buttons{i}).Units='normalized';
+            handles.(buttons{i}).Units='normalized';
       handles.(buttons{i}).CData=images{i};
 end
 end
-    function fileDisplayCallback(hObject,event,vAxis, handles)
-
-        % Read input video frame
-        frame = step(v);   
-        % Display input video frame on axis
-        showFrameOnAxis(vAxis.originalVideo, frame);
+    function playCallback(hObject,event,vAxis, handles)
+        while ~isDone(videoSrc)
+            % Read input video frame
+            frame = step(videoSrc);
+            % Display input video frame on axis
+            showFrameOnAxis(vAxis.originalVideo, frame);
+  
+        end
+        
+         % Close the video file
+        release(videoSrc);
+        %frame = step(v);   
+        
+        %showFrameOnAxis(vAxis.originalVideo, frame);
 
 
     end
 
     % --- Executes on button press in 'browse'.
-    function v= browseCallback(hObject,event,vAxis, handles)
+    function browseCallback(hObject,event,vAxis, handles)
     % hObject    handle to browse pushbutton (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % handles    structure with handles and user data (see GUIDATA)
@@ -197,10 +210,11 @@ end
     %videoSrc = vision.VideoFileReader(pathname, 'ImageColorSpace', 'Intensity');
     
     fullpathname = strcat(pathname, filename);
-    v = VideoReader(fullpathname);
+    videoSrc = vision.VideoFileReader(fullpathname, 'ImageColorSpace', 'Intensity');
   
     set( handles.fileNameDisplay, 'String', filename); %Showing FullPathName
-    
+    frame = step(videoSrc);
+    showFrameOnAxis(vAxis.originalVideo, frame);
     
     
     end
