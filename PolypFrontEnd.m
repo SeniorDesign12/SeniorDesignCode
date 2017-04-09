@@ -1,8 +1,9 @@
 function PolypFrontEnd()
 
+global videoWrite;
 global videoSrc;
 global frame;
-
+numFrames = 0;
 %% 
 % Create a figure window and two axes to display the input video and the
 % processed video.
@@ -121,6 +122,15 @@ f.forward= imread('fastfoward_image.jpg');
             'position',[.16 .35 .06 .06],...
             'callback', {@playCallback,vAxis, handles});
         
+        %Pause Button
+        handles.pause = uicontrol('Parent', backPanel,...
+            'unit', 'normalized',...
+            'style','pushbutton',...
+            'FontSize', 11,...
+            'string','Pause',...
+            'position',[.22 .35 .06 .06],...
+            'callback', {@pauseCallback,vAxis, handles});
+        
         
         %Fastforward Button
         handles.fastForward = uicontrol('Parent', backPanel,...
@@ -129,16 +139,17 @@ f.forward= imread('fastfoward_image.jpg');
             'FontSize', 11,...
             'string','F.Forward',...
             'BackgroundColor', 	'y',...
-            'position',[.22 .35 .06 .06]);
+            'position',[.28 .35 .06 .06],...
+            'callback', {@fastForwardCallback,vAxis, handles});
         
         %Next frame
-        handles.fastForward = uicontrol('Parent', backPanel,...
+        handles.nextFrame = uicontrol('Parent', backPanel,...
             'unit', 'normalized',...
             'style','pushbutton',...
             'FontSize', 11,...
             'string','nFrame',...
             'BackgroundColor', 	'y',...
-            'position',[.28 .35 .06 .06]);
+            'position',[.34 .35 .06 .06]);
         
          %Rewind Button 
         handles.rewind = uicontrol('Parent', backPanel,...
@@ -165,36 +176,65 @@ function add_images( handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 %image and button list
-images={'play-white-shawdows.png','fastfoward_image.jpg'};
-buttons={'play','fastForward'};
-for i=1:length(images)
-    %read the images
-    if isempty(strfind(images{i},'png'))
-        images{i}=imread(images{i});
-    else
-        images{i}=imread(images{i},'BackGroundColor',[0.961 0.98 0.98]);        
+    images={'play-white-shawdows.png','fastfoward_image.jpg'};
+    buttons={'play','fastForward'};
+    for i=1:length(images)
+        %read the images
+        if isempty(strfind(images{i},'png'))
+            images{i}=imread(images{i});
+        else
+            images{i}=imread(images{i},'BackGroundColor',[0.961 0.98 0.98]);        
+        end
+          %get the button new button sizes and resize images accordingly
+          handles.(buttons{i}).Units='pixels';
+          images{i}=imresize(images{i},fliplr(handles.(buttons{i}).Position(1,3:4)));
+                handles.(buttons{i}).Units='normalized';
+          handles.(buttons{i}).CData=images{i};
     end
-      %get the button new button sizes and resize images accordingly
-      handles.(buttons{i}).Units='pixels';
-      images{i}=imresize(images{i},fliplr(handles.(buttons{i}).Position(1,3:4)));
-            handles.(buttons{i}).Units='normalized';
-      handles.(buttons{i}).CData=images{i};
 end
-end
+    % --- Executes on play button press 
     function playCallback(hObject,event,vAxis, handles)
-        while ~isDone(videoSrc)
+                
+        while hasFrame(videoSrc)
             % Read input video frame
-            frame = step(videoSrc);
+            frame = readFrame(videoSrc);
+    
             % Display input video frame on axis
             showFrameOnAxis(vAxis.originalVideo, frame);
+            numFrames = numFrames+1;
+        end
+        
+        
+
+
+    end
+
+    function pauseCallback(hObject,event,vAxis, handles)
+        uiwait();
+       
+
+    end
+
+
+
+ % --- Executes on fast forward button press 
+    function fastForwardCallback(hObject,event,vAxis, handles)
+        i= numFrames+10;
+        j= i+1;
+      
+  
+        while hasFrame(videoSrc)
+            fast_frame = read(videoSrc,[i,j]);
+            
+            % Display input video frame on axis
+            showFrameOnAxis(vAxis.originalVideo, fast_frame);
+            i=i+10;
+            j=i+1;
+            
   
         end
         
-         % Close the video file
-        release(videoSrc);
-        %frame = step(v);   
         
-        %showFrameOnAxis(vAxis.originalVideo, frame);
 
 
     end
@@ -206,14 +246,13 @@ end
     % handles    structure with handles and user data (see GUIDATA)
     [filename, pathname]= uigetfile({'*.mp4'}, 'File Selector');
     
-    % Initialize the video reader.
-    %videoSrc = vision.VideoFileReader(pathname, 'ImageColorSpace', 'Intensity');
+   
     
     fullpathname = strcat(pathname, filename);
-    videoSrc = vision.VideoFileReader(fullpathname, 'ImageColorSpace', 'Intensity');
-  
+    videoSrc = VideoReader(fullpathname);
+        
     set( handles.fileNameDisplay, 'String', filename); %Showing FullPathName
-    frame = step(videoSrc);
+    frame = readFrame(videoSrc);
     showFrameOnAxis(vAxis.originalVideo, frame);
     
     
