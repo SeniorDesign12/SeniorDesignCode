@@ -1,9 +1,9 @@
 function PolypFrontEnd()
 
-global videoWrite;
+
 global videoSrc;
 global frame;
-numFrames = 0;
+global slider;
 %% 
 % Create a figure window and two axes to display the input video and the
 % processed video.
@@ -11,7 +11,7 @@ numFrames = 0;
 handles= create_buttons(backPanel);
 
 
-javaGuiComponents(backPanel);
+ javaGuiComponents(backPanel);
 
 %load button images
 play_image = imread('play_button.jpg');
@@ -60,23 +60,35 @@ f.forward= imread('fastfoward_image.jpg');
             'BackgroundColor',backPanel.Color);
     end
 
-    function javaGuiComponents(backPanel)
-        % Create and initialize a JScrollBar object
-        jRangeSlider = com.jidesoft.swing.RangeSlider(0,100,20,70);  % min,max,low,high
-        jRangeSlider = javacomponent(jRangeSlider, [30,335.89,435,55], backPanel);
-        set(jRangeSlider, 'MajorTickSpacing',25,...
-            'MinorTickSpacing',5, 'PaintTicks',true, 'PaintLabels',true, ...
-            'Background',java.awt.Color.white, 'StateChangedCallback',@myCallbackFunc);
+    function  javaGuiComponents(backPanel)
+               
+    
         
         
         
         
     end
 
+function sliderCallbackFunc(hObject,event,vAxis)
+    
+    videoSrc.CurrentTime = get(hObject,'LowValue');
+     new_frame = readFrame(videoSrc);
+ 
+    showFrameOnAxis(vAxis.originalVideo, new_frame);
+  
+
+   
+    
+    
+    
+end
+
 %% Insert Buttons
 % Insert buttons to play, pause, upload the videos.
     function handles = create_buttons(backPanel)  
-
+                
+       
+        
         % Static text that identifies upload function
         uicontrol('Parent', backPanel,...
             'unit','normalized',...
@@ -112,8 +124,7 @@ f.forward= imread('fastfoward_image.jpg');
             'callback', {@browseCallback,vAxis, handles});
        
 %--------------------------Mutlimedia components----------------------------
-        
-        
+
        
         %Play Button
         handles.play = uicontrol('Parent', backPanel,...
@@ -194,14 +205,16 @@ function add_images( handles)
 end
     % --- Executes on play button press 
     function playCallback(hObject,event,vAxis, handles)
-                
-        while hasFrame(videoSrc)
+                upper=get(slider, 'HighValue');
+                display(upper);
+                videoSrc.CurrentTime = get(slider,'LowValue');
+        while  videoSrc.CurrentTime< upper 
             % Read input video frame
             frame = readFrame(videoSrc);
     
             % Display input video frame on axis
             showFrameOnAxis(vAxis.originalVideo, frame);
-            numFrames = numFrames+1;
+       
         end
         
         
@@ -240,7 +253,7 @@ end
     end
 
     % --- Executes on button press in 'browse'.
-    function browseCallback(hObject,event,vAxis, handles)
+    function browseCallback(hObject,event,vAxis, handles )
     % hObject    handle to browse pushbutton (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % handles    structure with handles and user data (see GUIDATA)
@@ -254,6 +267,16 @@ end
     set( handles.fileNameDisplay, 'String', filename); %Showing FullPathName
     frame = readFrame(videoSrc);
     showFrameOnAxis(vAxis.originalVideo, frame);
+
+     % Create and initialize a JScrollBar object
+        slider = com.jidesoft.swing.RangeSlider(0, videoSrc.Duration, 0, (videoSrc.Duration/4) );  % min,max,low,high
+        javacomponent(slider, [30,335.89,435,55], backPanel);
+        set(slider, 'MajorTickSpacing',(videoSrc.Duration/15),...
+            'PaintTicks',true, 'PaintLabels',true, ...
+            'Background',java.awt.Color.white, 'StateChangedCallback',{@sliderCallbackFunc,vAxis});
+      
+    %here= get(slider,'HighValue');
+ 
     
     
     end
