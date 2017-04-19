@@ -1,6 +1,6 @@
 function PolypFrontEnd()
 
-
+global augmentedVideo;
 global videoSrc;
 global frame;
 global slider;
@@ -25,6 +25,7 @@ movegui(gcf,'center');
                'toolbar','none', ...
                'resize', 'off', ...
                'renderer','painters', ...
+               'HitTest','off',...
                'position',[150 60 1250 800]);
            
           set(gcf,'color',[0.6 0.8 1])
@@ -32,6 +33,8 @@ movegui(gcf,'center');
         % Create axes and titles
         vAxis.originalVideo = createPanelAxisTitle(backPanel,[0.02 0.5 0.36 0.4],'Original Video'); % [X Y W H]
         vAxis.augmentedVideo = createPanelAxisTitle(backPanel,[0.6 0.5 0.36 0.4],'Polyp Video');
+        set(vAxis.augmentedVideo,'ButtonDownFcn','disp(''axis callback'')',...
+            'HitTest','off');
     end
 
     function vAxis = createPanelAxisTitle(backPanel, pos, axisTitle)
@@ -101,7 +104,7 @@ end
         % edit text that displays uploaded video name
         handles.fileNameDisplay =uicontrol('Parent', backPanel,...
             'unit','normalized',...
-            'style','edit',...
+            'style','text',...
             'FontSize', 11,...
             'string','File Name',...
             'BackgroundColor', 	[0.9 1 0.1],...
@@ -135,6 +138,7 @@ end
         handles.pause = uicontrol('Parent', backPanel,...
             'unit', 'normalized',...
             'style','pushbutton',...
+            'tag','pause',...
             'position',[.2 .35 .06 .06],...
             'callback', {@pauseCallback,vAxis, handles});
         
@@ -190,27 +194,31 @@ function add_images( handles)
     end
 end
     % --- Executes on play button press 
-    function playCallback(hObject,event,vAxis, handles)
-                upper=get(slider, 'HighValue');
+    function playCallback(hObject,event, vAxis, handles)
+  
+        upper=get(slider, 'HighValue');
                 display(upper);
                 videoSrc.CurrentTime = get(slider,'LowValue');
         while  videoSrc.CurrentTime< upper 
             % Read input video frame
             frame = readFrame(videoSrc);
-    
+            frame2= readFrame(augmentedVideo);    
             % Display input video frame on axis
-            showFrameOnAxis(vAxis.originalVideo, frame);
-       
+            axes(vAxis.augmentedVideo);
+            imageHandle=imshow(frame);
+            set(imageHandle,'ButtonDownFcn',{@ImageClickCallback, handles})
+                
+            showFrameOnAxis(vAxis.originalVideo,frame2);
         end
-        
+          set(handles.pause, 'Enable', 'on');
         
 
 
     end
 
-    function pauseCallback(hObject,event,vAxis, handles)
+    function pauseCallback(hObject,event, vAxis, handles)
         uiwait();
-       
+        set(handles.pause, 'Enable', 'off');
 
     end
 
@@ -219,8 +227,7 @@ end
  % --- Executes on fast forward button press 
     function fastForwardCallback(hObject,event,vAxis, handles)
         i= numFrames+10;
-        j= i+1;
-      
+        j= i+1;     
   
         while hasFrame(videoSrc)
             fast_frame = read(videoSrc,[i,j]);
@@ -228,44 +235,63 @@ end
             % Display input video frame on axis
             showFrameOnAxis(vAxis.originalVideo, fast_frame);
             i=i+10;
-            j=i+1;
-            
+            j=i+1;          
   
         end
-        
-        
-
-
     end
 
+
+    %Executs on Click event on polyp axis
+    function ImageClickCallback(hObject,eventData, handles)
+        
+        ii= videoSrc.CurrentTime;
+        if(strcmp(get(handles.pause,'Enable'),'off'))
+           img = readFrame(videoSrc);
+           filename = [sprintf('%03d',ii) '.jpg'];
+            imwrite(img,filename);
+            disp(imwrite(img,filename));
+            points=getpts(vAxis.augmentedVideo);
+            disp(points);
+           %newimage=insertMarker(
+            
+        end
+        
+    end
     % --- Executes on button press in 'browse'.
-    function browseCallback(hObject,event,vAxis, handles )
+    function newVideo = browseCallback(hObject,event,vAxis, handles )
     % hObject    handle to browse pushbutton (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % handles    structure with handles and user data (see GUIDATA)
     [filename, pathname]= uigetfile({'*.mp4'}, 'File Selector');
     
-   
+   disp(handles);
     
     fullpathname = strcat(pathname, filename);
     videoSrc = VideoReader(fullpathname);
-        
+    augmentedVideo= VideoReader(fullpathname);
+    disp(videoSrc);
+    newVideo = VideoWriter('fullpathname', 'Uncompressed AVI');    
     set( handles.fileNameDisplay, 'String', filename); %Showing FullPathName
     frame = readFrame(videoSrc);
     showFrameOnAxis(vAxis.originalVideo, frame);
-
+    
+    axes(vAxis.augmentedVideo);
+            imageHandle=imshow(frame);
+    set(imageHandle,'ButtonDownFcn',{@ImageClickCallback, handles});
      % Create and initialize a JScrollBar object
-        slider = com.jidesoft.swing.RangeSlider(0, videoSrc.Duration, 0, (videoSrc.Duration/4) );  % min,max,low,high
+        slider = com.jidesoft.swing.RangeSlider(0, videoSrc.Duration, 0, (videoSrc.Duration/8) );  % min,max,low,high
         javacomponent(slider, [30,335.89,435,55], backPanel);
         set(slider, 'MajorTickSpacing',(videoSrc.Duration/15),...
             'PaintTicks',true, 'PaintLabels',true, ...
             'Background',java.awt.Color.white, 'StateChangedCallback',{@sliderCallbackFunc,vAxis});
-      
+       
+        %shuttle(videoSrc, get(slider,'LowValue'),get(slider, 'HighValue'));
     %here= get(slider,'HighValue');
  
     
     
     end
 
-    
+  
+        
 end
