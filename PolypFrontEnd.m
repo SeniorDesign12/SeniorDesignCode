@@ -7,11 +7,14 @@ global augmentedVideo;
 global videoSrc;
 global frame;
 global slider;
+h =[0, 1];
+count=2;
 %% 
 % Create a figure window and two axes to display the input video and the
 % processed video.
 [backPanel, vAxis] = createFigureAndAxes();
 handles= create_buttons(backPanel);
+
 movegui(gcf,'center');
 
  javaGuiComponents(backPanel);
@@ -29,7 +32,8 @@ movegui(gcf,'center');
                'resize', 'off', ...
                'renderer','painters', ...
                'HitTest','off',...
-               'position',[150 60 1150 600]);
+               'position',[150 60 1150 600],...
+               'WindowKeyPressFcn',@keyPress);
            
           set(gcf,'color',[0.6 0.8 1])
 
@@ -78,12 +82,7 @@ function sliderCallbackFunc(hObject,event,vAxis)
     videoSrc.CurrentTime = get(hObject,'LowValue');
      new_frame = readFrame(videoSrc);
  
-    showFrameOnAxis(vAxis.originalVideo, new_frame);
-  
-
-   
-    
-    
+    showFrameOnAxis(vAxis.originalVideo, new_frame); 
     
 end
 
@@ -129,6 +128,7 @@ end
         handles.countDisplay= uicontrol('Parent', backPanel,...
             'unit', 'normalized',...
             'style','text',...
+            'FontSize', 15,...
             'position',[.75 .2 .06 .06],...
             'callback', {@playCallback,vAxis, handles});
         
@@ -242,15 +242,32 @@ end
 
 
     end
+    function keyPress(fig_obj,eventDat)
 
+            if (strcmp(get(fig_obj, 'CurrentKey'),'delete')&& count>2)
+ 
+              
+                if (ishandle(h(count)))
+                    delete(h(count));
+                    count=count-1;
+                    set(handles.countDisplay, 'String', count-2);
+                end;
+            end
+
+% or 
+
+disp(eventDat)
+        
+        
+        
+        
+    end
     function pauseCallback(hObject,event, vAxis, handles)
          set(hObject, 'Enable', 'off');
         uiwait();
        
 
     end
-
-
 
  % --- Executes on fast forward button press 
     function fastForwardCallback(hObject,event,vAxis, handles)
@@ -270,24 +287,41 @@ end
 
 
     %Executs on Click event on polyp axis
-    function ImageClickCallback(hObject,eventData, handles)
-        disp('HERE');
+    function ImageClickCallback(hObject,eventData, handles, imageHandle)
+       
+       
+        
                ii= videoSrc.CurrentTime;
          if(strcmp(get(handles.pause,'Enable'),'off'))
+            
+    
            img = readFrame(videoSrc);
             filename = [sprintf('%03d',ii) '.jpg'];
             fullname = fullfile(workingDir,'images',filename);
-             imwrite(img,fullname) 
-             points=getpts(vAxis.augmentedVideo);
-            disp(points);
-           %newimage=insertMarker(
+             imwrite(img,fullname);
+             [x,y, button]=ginput(1);
+             disp(button);
+            % Prevent image from being blown away.
+              if (button==1)
+                 
+                count=count+1;
+                disp('Count is ')
+                disp(count);
+                 hold on;
+                 h(count)= plot(x,y,'r+', 'MarkerSize', 50);
+                 set(handles.countDisplay, 'String', count-2);
+               end
             
-        end
-       
+                
+           
+            
+              
+         end
+        clearvars button;
         
     end
     % --- Executes on button press in 'browse'.
-    function newVideo = browseCallback(hObject,event,vAxis, handles )
+    function [newVideo, imageHandle] = browseCallback(hObject,event,vAxis, handles )
     % hObject    handle to browse pushbutton (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % handles    structure with handles and user data (see GUIDATA)
@@ -306,7 +340,8 @@ end
     
     axes(vAxis.augmentedVideo);
             imageHandle=imshow(frame);
-    set(imageHandle,'ButtonDownFcn',{@ImageClickCallback, handles});
+    set(vAxis.augmentedVideo,'ButtonDownFcn',{@ImageClickCallback, handles, imageHandle});
+
      % Create and initialize a JScrollBar object
         slider = com.jidesoft.swing.RangeSlider(0, videoSrc.Duration, 0, (videoSrc.Duration/8) );  % min,max,low,high
         javacomponent(slider, [28,255,420,40], backPanel);
@@ -316,11 +351,5 @@ end
        
         %shuttle(videoSrc, get(slider,'LowValue'),get(slider, 'HighValue'));
     %here= get(slider,'HighValue');
- 
-    
-    
-    end
-
-  
-        
+    end       
 end
