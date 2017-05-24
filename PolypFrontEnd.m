@@ -7,6 +7,7 @@ global augmentedVideo;
 global videoSrc;
 global frame;
 global slider;
+global A;
 h =[0, 1];
 count=2;
 %% 
@@ -14,11 +15,8 @@ count=2;
 % processed video.
 [backPanel, vAxis] = createFigureAndAxes();
 handles= create_buttons(backPanel);
-
+A = {};
 movegui(gcf,'center');
-
- javaGuiComponents(backPanel);
-
 
 %% Create Figure, Axes, Titles
 % Create a figure window and two axes with titles to display two videos.
@@ -66,15 +64,6 @@ movegui(gcf,'center');
             'Units','normalized',...
             'Parent',backPanel,'Position', titlePos,...
             'BackgroundColor',backPanel.Color);
-    end
-
-    function  javaGuiComponents(backPanel)
-               
-    
-        
-        
-        
-        
     end
 
 function sliderCallbackFunc(hObject,event,vAxis)
@@ -147,7 +136,7 @@ end
             'string', 'Save',...
             'position',[.60 .35 .15 .06],...
             'FontSize', 15,...
-            'callback', {@playCallback,vAxis, handles});
+            'callback', {@saveCallback,vAxis, handles});
        
 %--------------------------Mutlimedia components----------------------------
 
@@ -165,34 +154,6 @@ end
             'style','pushbutton',...
             'position',[.14 .35 .06 .06],...
             'callback', {@playCallback,vAxis, handles});
-        
-        
-        
-        
-        %Fastforward Button
-        handles.fastForward = uicontrol('Parent', backPanel,...
-            'unit', 'normalized',...
-            'style','pushbutton',...
-            'position',[.26 .35 .06 .06],...
-            'callback', {@fastForwardCallback,vAxis, handles});
-        
-        %Next frame
-        handles.nextFrame = uicontrol('Parent', backPanel,...
-            'unit', 'normalized',...
-            'style','pushbutton',...
-            'position',[.32 .35 .06 .06]);
-        
-         %Rewind Button 
-        handles.rewind = uicontrol('Parent', backPanel,...
-            'unit', 'normalized',...
-            'style','pushbutton',...
-            'position',[.08 .35 .06 .06]);
-            
-        %Skip to Frame before (Reverse next Frame )(rNextFrame))
-        handles.rNextFrame = uicontrol('Parent', backPanel,...
-            'unit', 'normalized',...
-            'style','pushbutton',...
-            'position',[.02 .35 .06 .06]);
         add_images(handles);
     end
 
@@ -203,8 +164,8 @@ function add_images( handles)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 %image and button list
-    images={'PlayButton.jpg','FastForward.jpg', 'PauseButton.jpg', 'RewindButton.jpg', 'NextFrame.jpg', 'LastFrame.jpg'};
-    buttons={'play','fastForward', 'pause', 'rewind', 'nextFrame', 'rNextFrame'};
+    images={'PlayButton.jpg', 'PauseButton.jpg'};
+    buttons={'play', 'pause',};
     for i=1:length(images)
         %read the images
         if isempty(strfind(images{i},'png'))
@@ -234,101 +195,72 @@ end
             axes(vAxis.augmentedVideo);
             imageHandle=imshow(frame2);
             set(imageHandle,'ButtonDownFcn',{@ImageClickCallback, handles})
-                
             showFrameOnAxis(vAxis.originalVideo,frame2);
         end
-         
-        
-
-
     end
     function keyPress(fig_obj,eventDat)
-
             if (strcmp(get(fig_obj, 'CurrentKey'),'delete')&& count>2)
- 
-              
                 if (ishandle(h(count)))
                     delete(h(count));
                     count=count-1;
                     set(handles.countDisplay, 'String', count-2);
+                    A = A(1:end-1);
                 end;
             end
-
 % or 
-
-disp(eventDat)
-        
-        
-        
-        
+disp(eventDat) 
     end
+
     function pauseCallback(hObject,event, vAxis, handles)
          set(hObject, 'Enable', 'off');
         uiwait();
-       
-
     end
 
- % --- Executes on fast forward button press 
-    function fastForwardCallback(hObject,event,vAxis, handles)
-        i= numFrames+10;
-        j= i+1;     
-  
-        while hasFrame(videoSrc)
-            fast_frame = read(videoSrc,[i,j]);
-            
-            % Display input video frame on axis
-            showFrameOnAxis(vAxis.originalVideo, fast_frame);
-            i=i+10;
-            j=i+1;          
-  
-        end
-    end
-
-
-    %Executs on Click event on polyp axis
+    %Executes on Click event on polyp axis
     function ImageClickCallback(hObject,eventData, handles, imageHandle)
-       
-       
-        
                ii= videoSrc.CurrentTime;
          if(strcmp(get(handles.pause,'Enable'),'off'))
-            
-    
            img = readFrame(videoSrc);
             filename = [sprintf('%03d',ii) '.jpg'];
             fullname = fullfile(workingDir,'images',filename);
              imwrite(img,fullname);
              [x,y, button]=ginput(1);
+             B = [x y]
+             A = cat(1, A, B);
              disp(button);
             % Prevent image from being blown away.
               if (button==1)
-                 
                 count=count+1;
                 disp('Count is ')
                 disp(count);
                  hold on;
-                 h(count)= plot(x,y,'r+', 'MarkerSize', 50);
+                 h(count)= plot(x,y,'b+', 'MarkerSize', 30);
                  set(handles.countDisplay, 'String', count-2);
-               end
-            
-                
-           
-            
-              
+              end 
          end
-        clearvars button;
-        
+        clearvars button;   
     end
+
+    % --- Executes on save button press
+    function saveCallback(hObject,event, vAxis, handles)
+        A = cell2mat(A);
+        A = double(A);
+        [filename, foldername] = uiputfile('Where do you want the file saved?');
+        complete_name = fullfile(foldername, filename);
+        newImage = readFrame(augmentedVideo);
+        RGB = insertMarker(newImage, A, 'color','blue','size',30);
+        imwrite(RGB,complete_name);
+        A = {};
+    end
+
+
     % --- Executes on button press in 'browse'.
     function [newVideo, imageHandle] = browseCallback(hObject,event,vAxis, handles )
     % hObject    handle to browse pushbutton (see GCBO)
     % eventdata  reserved - to be defined in a future version of MATLAB
     % handles    structure with handles and user data (see GUIDATA)
     [filename, pathname]= uigetfile({'*.mp4'}, 'File Selector');
-    
-   disp(handles);
-    
+    disp(handles);
     fullpathname = strcat(pathname, filename);
     videoSrc = VideoReader(fullpathname);
     augmentedVideo= VideoReader(fullpathname);
@@ -337,19 +269,14 @@ disp(eventDat)
     set( handles.fileNameDisplay, 'String', filename); %Showing FullPathName
     frame = readFrame(videoSrc);
     showFrameOnAxis(vAxis.originalVideo, frame);
-    
-    axes(vAxis.augmentedVideo);
-            imageHandle=imshow(frame);
+    imageHandle=imshow(frame);
     set(vAxis.augmentedVideo,'ButtonDownFcn',{@ImageClickCallback, handles, imageHandle});
 
      % Create and initialize a JScrollBar object
-        slider = com.jidesoft.swing.RangeSlider(0, videoSrc.Duration, 0, (videoSrc.Duration/8) );  % min,max,low,high
+        slider = com.jidesoft.swing.RangeSlider(0, videoSrc.Duration, 0, (videoSrc.Duration) );  % min,max,low,high
         javacomponent(slider, [28,255,420,40], backPanel);
         set(slider, 'MajorTickSpacing',(videoSrc.Duration/15),...
             'PaintTicks',true, 'PaintLabels',true, ...
             'Background',java.awt.Color.white, 'StateChangedCallback',{@sliderCallbackFunc,vAxis});
-       
-        %shuttle(videoSrc, get(slider,'LowValue'),get(slider, 'HighValue'));
-    %here= get(slider,'HighValue');
     end       
 end
